@@ -48,6 +48,18 @@ func (t *Ticker) String () string {
 // Order represents an order on the order book.
 type Order []string
 
+func (o Order) String () string {
+	a, err := o.Amount()
+	if err != nil {
+		a = 0
+	}
+	p, err := o.Price()
+	if err != nil {
+		p = 0
+	}
+	return fmt.Sprintf("%0.8f @ %0.2f", a, p)
+}
+
 // Price returns the price from the order.
 func (o Order) Price () (float64, error) {
 	if len(o) < 1 {
