@@ -16,12 +16,14 @@ import (
 
 // Config is the configuration to use to access the itBit API
 type Config struct {
-	// APIKey is the private API key. If not set, only public API endpoints will be available.
-	APIKey string
+	// ClientSecret is the private API key. If not set, only public API endpoints will be available.
+	ClientSecret string
 	// APIBaseURL is the base url to use when accessing the API. If not set, the production API will be used.
 	APIBaseURL string
 	// ClientKey is the public client key
 	ClientKey string
+	// UserID is the user ID on the account to use
+	UserID string
 }
 
 func doReq(conf Config, method, path string, signed bool, postData interface{}) (io.ReadCloser, error) {
@@ -65,7 +67,7 @@ func doReq(conf Config, method, path string, signed bool, postData interface{}) 
 }
 
 func signRequest(conf Config, r *http.Request, body []byte) error {
-	if conf.APIKey == "" || conf.ClientKey == "" {
+	if conf.ClientSecret == "" || conf.ClientKey == "" {
 		return errors.New("conf insufficient to make signed requests")
 	}
 	timestamp := time.Now().UnixNano() / 1000
@@ -82,7 +84,7 @@ func signRequest(conf Config, r *http.Request, body []byte) error {
 	}
 	sha.Write(toSign)
 
-	hasher := hmac.New(sha512.New, []byte(conf.APIKey))
+	hasher := hmac.New(sha512.New, []byte(conf.ClientSecret))
 
 	if _, err := hasher.Write(sha.Sum(nil)); err != nil {
 		return errors.Wrap(err, "writing to sha512 hmac")
