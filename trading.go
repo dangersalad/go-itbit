@@ -18,15 +18,21 @@ type Currency string
 
 const (
 	// OrderSideBuy indicates a buy trade.
-	OrderSideBuy = "buy"
+	OrderSideBuy = OrderSide("buy")
 	// OrderSideSell indicates a sell trade.
-	OrderSideSell = "sell"
+	OrderSideSell = OrderSide("sell")
 	// OrderTypeLimit indicates a limit order.
-	OrderTypeLimit = "limit"
+	OrderTypeLimit = OrderType("limit")
 	// CurrencyXBT is bitcoin.
-	CurrencyXBT = "XBT"
+	CurrencyXBT = Currency("XBT")
 	// CurrencyBTC is an alias for CurrencyXBT.
 	CurrencyBTC = CurrencyXBT
+	// CurrencyUSD is US Dollars
+	CurrencyUSD = Currency("USD")
+	// CurrencyEUR is Euros
+	CurrencyEUR = Currency("EUR")
+	// CurrencySGD is SGD
+	CurrencySGD = Currency("SGD")
 )
 
 // OrderRequest is a request to place an order on the market.
@@ -64,7 +70,7 @@ func NewOrder(conf Config, walletID string, order *OrderRequest) (*OrderResponse
 	if err := validateOrderType(order.Type); err != nil {
 		return nil, err
 	}
-	if err := validateCurrency(order.Currency); err != nil {
+	if err := validateCryptoCurrency(order.Currency); err != nil {
 		return nil, err
 	}
 	resp, err := doReq(conf, "POST", fmt.Sprintf("/wallets/%s/order", walletID), true, order)
@@ -81,12 +87,29 @@ func NewOrder(conf Config, walletID string, order *OrderRequest) (*OrderResponse
 	return r, nil
 }
 
-func validateCurrency (c Currency) error {
+func validateCryptoCurrency(c Currency) error {
 	if c != CurrencyBTC {
-		return errors.Errorf("invalid currency %s", c)
+		return errors.Errorf("invalid crypto currency %s", c)
 	}
 	return nil
 }
+
+func validateFiatCurrency(c Currency) error {
+	switch c {
+	case CurrencySGD, CurrencyUSD, CurrencyEUR:
+		return nil
+	}
+	return errors.Errorf("invalid fiat currency %s", c)
+}
+
+func validateCurrency(c Currency) error {
+	switch c {
+	case CurrencyBTC, CurrencySGD, CurrencyUSD, CurrencyEUR:
+		return nil
+	}
+	return errors.Errorf("invalid currency %s", c)
+}
+
 func validateOrderType (c OrderType) error {
 	if c != OrderTypeLimit {
 		return errors.Errorf("invalid order type %s", c)
