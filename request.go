@@ -56,6 +56,8 @@ func doReq(conf Config, method, path string, signed bool, postData interface{}) 
 		}
 	}
 
+	debug("sending request", req)
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "doing request")
@@ -67,16 +69,19 @@ func doReq(conf Config, method, path string, signed bool, postData interface{}) 
 }
 
 func signRequest(conf Config, r *http.Request, body []byte) error {
+	debug("signing request")
 	if conf.ClientSecret == "" || conf.ClientKey == "" {
 		return errors.New("conf insufficient to make signed requests")
 	}
 	timestamp := time.Now().UnixNano() / 1000
 	nonce := timestamp - 42
 	sigParts := []string{strings.ToUpper(r.Method), r.URL.String(), string(body), fmt.Sprint(nonce), fmt.Sprint(timestamp)}
+	debugf("signature parts: %#v", sigParts)
 	toSign, err := json.Marshal(sigParts)
 	if err != nil {
 		return errors.Wrap(err, "marshaling signature parts")
 	}
+	debugf("to sign: %s", toSign)
 
 	sha := sha256.New()
 	if _, err := sha.Write([]byte(fmt.Sprint(nonce))); err != nil {
@@ -84,16 +89,22 @@ func signRequest(conf Config, r *http.Request, body []byte) error {
 	}
 	sha.Write(toSign)
 
+	shasum := sha.Sum(nil)
+	debug("sha sum", shasum)
+
 	hasher := hmac.New(sha512.New, []byte(conf.ClientSecret))
 
-	if _, err := hasher.Write(sha.Sum(nil)); err != nil {
+	if _, err := hasher.Write(shasum); err != nil {
 		return errors.Wrap(err, "writing to sha512 hmac")
 	}
 	sig := hasher.Sum(nil)
+	debug("sig", sig)
 
 	r.Header.Set("authorization", fmt.Sprintf("%s:%X", conf.ClientKey, sig))
 	r.Header.Set("x-auth-timestamp", fmt.Sprint(timestamp))
 	r.Header.Set("x-auth-nonce", fmt.Sprint(nonce))
+
+	debug("outgoing headers", r.Header)
 
 	return nil
 
