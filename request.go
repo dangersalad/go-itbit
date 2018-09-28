@@ -63,7 +63,7 @@ func doReq(conf *Config, method, path string, signed bool, postData interface{})
 	if err != nil {
 		return nil, errors.Wrap(err, "doing request")
 	}
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode >= http.StatusBadRequest {
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return nil, errors.Wrapf(err, "reading %d error body", resp.StatusCode)
