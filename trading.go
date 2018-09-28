@@ -73,7 +73,7 @@ func NewOrder(conf *Config, walletID string, order *OrderRequest) (*OrderRespons
 	if err := validateCryptoCurrency(order.Currency); err != nil {
 		return nil, err
 	}
-	resp, err := doReq(conf, "POST", fmt.Sprintf("/wallets/%s/order", walletID), true, order)
+	resp, err := doReq(conf, "POST", fmt.Sprintf("/wallets/%s/orders", walletID), true, order)
 	if err != nil {
 		return nil, errors.Wrap(err, "requesting order creation")
 	}
