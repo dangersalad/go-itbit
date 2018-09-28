@@ -44,8 +44,8 @@ type OrderRequest struct {
 	Display               float64                `json:"display,string"`
 	Price                 float64                `json:"price,string"`
 	Instrument            Symbol                 `json:"instrument"`
-	Metadata              map[string]interface{} `json:"metadata"`
-	ClientOrderIdentifier string                 `json:"clientOrderIdentifier"`
+	Metadata              map[string]interface{} `json:"metadata,omitempty"`
+	ClientOrderIdentifier string                 `json:"clientOrderIdentifier,omitempty"`
 }
 
 // OrderResponse is a response to an order query or placement
