@@ -32,7 +32,6 @@ func GetAllWallets(conf *Config) ([]*Wallet, error) {
 
 // readAllWallets recursively gets all wallets for the user ID in the conf
 func readAllWallets(conf *Config, page int) ([]*Wallet, error) {
-	debug(conf)
 	params := url.Values{
 		"userId": []string{conf.UserID},
 		"page": []string{fmt.Sprintf("%d", page)},
