@@ -23,7 +23,7 @@ type WalletBalance struct {
 }
 
 // GetAllWallets returns the wallets for the user ID in the given config
-func GetAllWallets(conf Config) ([]*Wallet, error) {
+func GetAllWallets(conf *Config) ([]*Wallet, error) {
 	if conf.UserID == "" {
 		return nil, errors.New("no UserID on config")
 	}
@@ -31,7 +31,8 @@ func GetAllWallets(conf Config) ([]*Wallet, error) {
 }
 
 // readAllWallets recursively gets all wallets for the user ID in the conf
-func readAllWallets(conf Config, page int) ([]*Wallet, error) {
+func readAllWallets(conf *Config, page int) ([]*Wallet, error) {
+	debug(conf)
 	params := url.Values{
 		"userId": []string{conf.UserID},
 		"page": []string{fmt.Sprintf("%d", page)},
@@ -45,7 +46,7 @@ func readAllWallets(conf Config, page int) ([]*Wallet, error) {
 
 	dec := json.NewDecoder(resp)
 	var wallets []*Wallet
-	if err := dec.Decode(wallets); err != nil {
+	if err := dec.Decode(&wallets); err != nil {
 		return nil, errors.Wrapf(err,"decoding page %d", page)
 	}
 

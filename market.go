@@ -91,7 +91,7 @@ type OrderBook struct {
 }
 
 // GetTicker gets the market data for a symbol.
-func GetTicker(conf Config, symbol Symbol) (*Ticker, error) {
+func GetTicker(conf *Config, symbol Symbol) (*Ticker, error) {
 	if err := validateSymbol(symbol); err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func GetTicker(conf Config, symbol Symbol) (*Ticker, error) {
 }
 
 // GetOrderBook gets a list of the open orders.
-func GetOrderBook(conf Config, symbol Symbol) (*OrderBook, error) {
+func GetOrderBook(conf *Config, symbol Symbol) (*OrderBook, error) {
 	if err := validateSymbol(symbol); err != nil {
 		return nil, err
 	}

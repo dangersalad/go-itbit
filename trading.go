@@ -60,7 +60,7 @@ type OrderResponse struct {
 }
 
 // NewOrder makes a new order.
-func NewOrder(conf Config, walletID string, order *OrderRequest) (*OrderResponse, error) {
+func NewOrder(conf *Config, walletID string, order *OrderRequest) (*OrderResponse, error) {
 	if err := validateSymbol(order.Instrument); err != nil {
 		return nil, err
 	}

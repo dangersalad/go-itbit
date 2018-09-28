@@ -3,7 +3,7 @@ package itbit
 import "testing"
 
 func TestGetTicker(t *testing.T) {
-	conf := Config{}
+	conf := &Config{}
 	if _, err := GetTicker(conf, SymbolXBTUSD); err != nil {
 		t.Fail()
 		return
@@ -11,7 +11,7 @@ func TestGetTicker(t *testing.T) {
 }
 
 func TestGetOrderBook(t *testing.T) {
-	conf := Config{}
+	conf := &Config{}
 	if _, err := GetOrderBook(conf, SymbolXBTUSD); err != nil {
 		t.Fail()
 		return
