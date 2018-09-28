@@ -5,10 +5,12 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/sha512"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -24,9 +26,10 @@ type Config struct {
 	ClientKey string
 	// UserID is the user ID on the account to use
 	UserID string
+	nonce  int
 }
 
-func doReq(conf Config, method, path string, signed bool, postData interface{}) (io.ReadCloser, error) {
+func doReq(conf *Config, method, path string, signed bool, postData interface{}) (io.ReadCloser, error) {
 
 	path = makeURL(conf, path)
 
@@ -56,61 +59,84 @@ func doReq(conf Config, method, path string, signed bool, postData interface{}) 
 		}
 	}
 
-	debug("sending request", req)
-
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "doing request")
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("%d error", resp.StatusCode)
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, errors.Wrapf(err, "reading %d error body", resp.StatusCode)
+		}
+		dec := json.NewDecoder(bytes.NewBuffer(body))
+		apiErr := &itbitError{}
+		if err := dec.Decode(apiErr); err != nil {
+			return nil, errors.Wrapf(err, "parsing %d error body: %s", resp.StatusCode, body)
+		}
+		return nil, apiErr
 	}
 	return resp.Body, nil
 }
 
-func signRequest(conf Config, r *http.Request, body []byte) error {
+func signRequest(conf *Config, r *http.Request, body []byte) error {
 	debug("signing request")
 	if conf.ClientSecret == "" || conf.ClientKey == "" {
 		return errors.New("conf insufficient to make signed requests")
 	}
-	timestamp := time.Now().UnixNano() / 1000
-	nonce := timestamp - 42
-	sigParts := []string{strings.ToUpper(r.Method), r.URL.String(), string(body), fmt.Sprint(nonce), fmt.Sprint(timestamp)}
+	timestamp := time.Now().UnixNano() / 1000000
+	conf.nonce++
+	nonce := conf.nonce
+	//urlStr := fmt.Sprintf("%s://%s%s", r.URL.Scheme, r.URL.Host, r.URL.Path)
+	urlStr := r.URL.String()
+
+	sigParts := []string{strings.ToUpper(r.Method), urlStr, string(body), fmt.Sprint(nonce), fmt.Sprint(timestamp)}
 	debugf("signature parts: %#v", sigParts)
-	toSign, err := json.Marshal(sigParts)
-	if err != nil {
+	b := new(bytes.Buffer)
+	enc := json.NewEncoder(b)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(sigParts); err != nil {
 		return errors.Wrap(err, "marshaling signature parts")
 	}
-	debugf("to sign: %s", toSign)
+	// take off the last byte, as the encoder adds newlines
+	toHash := append([]byte(fmt.Sprintf("%d", nonce)), b.Bytes()[:len(b.Bytes())-1]...)
+	debugf("to hash: %s", toHash)
 
 	sha := sha256.New()
-	if _, err := sha.Write([]byte(fmt.Sprint(nonce))); err != nil {
+	if _, err := sha.Write(toHash); err != nil {
 		return errors.Wrap(err, "writing to sha256 hasher")
 	}
-	sha.Write(toSign)
 
 	shasum := sha.Sum(nil)
-	debug("sha sum", shasum)
+	debugf("sha256 sum: %x", shasum)
 
 	hasher := hmac.New(sha512.New, []byte(conf.ClientSecret))
+	toSign := append([]byte(urlStr), shasum...)
 
-	if _, err := hasher.Write(shasum); err != nil {
-		return errors.Wrap(err, "writing to sha512 hmac")
+	debugf("to sign: %x", toSign)
+	if _, err := hasher.Write(toSign); err != nil {
+		return errors.Wrap(err, "writing url to sha512 hmac")
 	}
-	sig := hasher.Sum(nil)
-	debug("sig", sig)
+	sigbytes := hasher.Sum(nil)
 
-	r.Header.Set("authorization", fmt.Sprintf("%s:%X", conf.ClientKey, sig))
+	debugf("sig bytes: %x", sigbytes)
+
+	sig := base64.StdEncoding.EncodeToString(sigbytes)
+	debugf("sig (hmac sha512): %s", sig)
+
+	r.Header.Set("Authorization", fmt.Sprintf("%s:%s", conf.ClientKey, sig))
 	r.Header.Set("x-auth-timestamp", fmt.Sprint(timestamp))
 	r.Header.Set("x-auth-nonce", fmt.Sprint(nonce))
 
-	debug("outgoing headers", r.Header)
+	debug("outgoing headers")
+	for k, v := range r.Header {
+		debug(k, v)
+	}
 
 	return nil
 
 }
 
-func makeURL(conf Config, path string) string {
+func makeURL(conf *Config, path string) string {
 	base := conf.APIBaseURL
 	if base == "" {
 		base = `https://api.itbit.com/v1`
